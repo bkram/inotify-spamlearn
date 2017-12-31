@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 # vim: ai ts=4 sts=4 et sw=4
 
+
 import configparser
 import logging
 import os
@@ -18,7 +19,7 @@ def getconfig():
         learncmd = config.get('spam', 'learncmd')
         return (path, learncmd)
     except:
-        exit('Configuration error, please check \'config.cfg\'')
+        exit('Configuration error, please check \'inotify-spamlearn.cfg\'')
 
 
 def learn(filename, spamcmd):
