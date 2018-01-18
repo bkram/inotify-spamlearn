@@ -12,13 +12,13 @@ import subprocess
 def getconfig():
     config = configparser.ConfigParser()
     try:
-        config.read('inotify-spamlearn.cfg')
+        config.read('/etc/kopano/inotify-spamlearn.cfg')
         path = config.get('path', 'watch')
         learncmd = config.get('spam', 'learncmd')
         delete = config.getboolean('spam', 'delete')
         startup = config.getboolean('spam', 'startup')
         logfile = config.get('logs', 'logfile')
-        return (path, learncmd, logfile, delete, startup)
+        return path, learncmd, logfile, delete, startup
     except:
         exit('Configuration error, please check \'inotify-spamlearn.cfg\'')
 
@@ -60,7 +60,6 @@ def start():
         i.add_watch(path)
     except Exception:
         logging.error('Cannot start inotify watch for {}'.format(path))
-
     else:
         logging.info('Inotify Learning Started')
 
