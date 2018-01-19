@@ -1,7 +1,7 @@
 # inotify-spamlearn
 
 ## Description
-Designed to be a companion to the Kopano Core kopano-spamd, which is included from Kopano Core 8.5.
+Designed to be a companion to the Kopano Core kopano-spamd, which is included from Kopano Core 8.6.
 The kopano-spamd, detects mail dragged in the Junk folder, and writes these to /var/lib/kopano/spamd/spam folder as eml files for further processing by external tooling.
 
 ## Installation
