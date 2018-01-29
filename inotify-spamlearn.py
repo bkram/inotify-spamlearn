@@ -36,7 +36,6 @@ def process(filename, spamcmd, delete):
 
         except Exception as e:
             logging.warning('Processing failed [{}]: '.format(e))
-
         else:
             if delete:
                 logging.info('Removing file: {}'.format(filename))
@@ -47,14 +46,11 @@ def process(filename, spamcmd, delete):
 
 def start():
     (spam_dir, ham_dir, spamcmd, hamcmd, logfile, delete, startup) = getconfig()
-
     logging.basicConfig(filename=logfile, format='%(asctime)s %(message)s', level=logging.INFO)
     logging.info('Starting Process')
 
     if startup:
-
         for checkdir in [spam_dir, ham_dir]:
-
             logging.info('Looking for existing files in {}'.format(checkdir))
             for spam in os.listdir(checkdir):
                 try:
@@ -83,7 +79,6 @@ def start():
                         process('/'.join([watch_path, filename]), spamcmd, delete)
                     elif watch_path == ham_dir:
                         process('/'.join([watch_path, filename]), hamcmd, delete)
-
     finally:
         i.remove_watch([spam_dir, ham_dir])
 
