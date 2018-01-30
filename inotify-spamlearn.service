@@ -1,0 +1,12 @@
+[Unit]
+Description=Inotify Spamlearn
+
+[Service]
+User=kopano
+Group=kopano
+Type=simple
+ExecStart= /usr/local/sbin/inotify-spamlearn.py 
+ExecReload=/bin/kill -HUP $MAINPID
+
+[Install]
+WantedBy=multi-user.target

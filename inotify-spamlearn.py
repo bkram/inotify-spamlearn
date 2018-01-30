@@ -2,11 +2,12 @@
 # -*- coding: utf-8 -*-
 # vim: ai ts=4 sts=4 et sw=4
 
+import configparser
 import logging
 import os
 import subprocess
+import threading
 
-import configparser
 import inotify.adapters
 
 
@@ -20,19 +21,20 @@ def getconfig():
         hamcmd = config.get('spam', 'spamcmd')
         delete = config.getboolean('spam', 'delete')
         startup = config.getboolean('spam', 'startup')
+        loglevel = config.get('logs', 'loglevel')
         logfile = config.get('logs', 'logfile')
-        return spam_dir, ham_dir, spamcmd, hamcmd, logfile, delete, startup
+        return spam_dir, ham_dir, spamcmd, hamcmd, logfile, loglevel, delete, startup
     except Exception as e:
         exit('Configuration {}\n please check inotify-spamlearn.cfg'.format(e))
 
 
-def process(filename, spamcmd, delete):
+def process(filename, spamcmd, delete, initiator):
     cmd = ' '.join([spamcmd, filename])
     if os.path.exists(filename):
         try:
             p = subprocess.Popen(cmd.split(' '), stdout=subprocess.PIPE)
             learning, output_err = p.communicate()
-            logging.info('Processing [%s]: %s' % (filename, str(learning.decode('utf-8')).strip('\n')))
+            logging.info('Processing [%s] %s: %s' % (initiator, filename, str(learning.decode('utf-8')).strip('\n')))
 
         except Exception as e:
             logging.warning('Processing failed [{}]: '.format(e))
@@ -44,23 +46,24 @@ def process(filename, spamcmd, delete):
         logging.warning('File %s does not exist (anymore)' % filename)
 
 
-def start():
-    (spam_dir, ham_dir, spamcmd, hamcmd, logfile, delete, startup) = getconfig()
-    logging.basicConfig(filename=logfile, format='%(asctime)s %(message)s', level=logging.INFO)
-    logging.info('Starting Process')
-
+def scandirs(spam_dir, ham_dir, spamcmd, hamcmd, delete, startup):
+    initiator = 'Dirscan'
     if startup:
         for checkdir in [spam_dir, ham_dir]:
             logging.info('Looking for existing files in {}'.format(checkdir))
             for spam in os.listdir(checkdir):
                 try:
                     if checkdir == spam_dir:
-                        process('/'.join([checkdir, spam]), spamcmd, delete)
+                        process('/'.join([checkdir, spam]), spamcmd, delete, initiator)
                     elif checkdir == ham_dir:
-                        process('/'.join([checkdir, spam]), hamcmd, delete)
+                        process('/'.join([checkdir, spam]), hamcmd, delete, initiator)
                 except Exception as e:
                     logging.error('Cannot open path {} {}'.format(checkdir, e))
+            logging.info('Finished looking for existing files in {}'.format(checkdir))
 
+
+def inotified(spam_dir, ham_dir, spamcmd, hamcmd, delete):
+    initiator = 'Inotify'
     i = inotify.adapters.Inotify()
     try:
         i.add_watch(spam_dir)
@@ -68,23 +71,35 @@ def start():
     except Exception as e:
         logging.error('Cannot start inotify watch: {}'.format(e))
     else:
-        logging.info('Inotify Learning Started')
+        logging.info('Inotify learning started')
 
     try:
         for event in i.event_gen():
             if event is not None:
                 (header, type_names, watch_path, filename) = event
-                if type_names[0] == 'IN_CLOSE_WRITE':
+                if type_names[0] == 'IN_CLOSE_WRITE' and filename.endswith('.eml'):
                     if watch_path == spam_dir:
-                        process('/'.join([watch_path, filename]), spamcmd, delete)
+                        process('/'.join([watch_path, filename]), spamcmd, delete, initiator)
                     elif watch_path == ham_dir:
-                        process('/'.join([watch_path, filename]), hamcmd, delete)
+                        process('/'.join([watch_path, filename]), hamcmd, delete, initiator)
+
     finally:
         i.remove_watch([spam_dir, ham_dir])
 
 
 def main():
-    start()
+    (spam_dir, ham_dir, spamcmd, hamcmd, logfile, loglevel, delete, startup) = getconfig()
+
+    loglevel = getattr(logging, loglevel.upper(), 'INFO')
+    logging.basicConfig(format='%(levelname)s %(message)s', filename=logfile, level=loglevel)
+
+    logging.info('Starting inotify-spamlearn.py')
+    scanthread = threading.Thread(name='Scan Directories', target=scandirs,
+                                  args=(spam_dir, ham_dir, spamcmd, hamcmd, delete, startup))
+    inotifythread = threading.Thread(name='Inotify Handling', target=inotified,
+                                     args=(spam_dir, ham_dir, spamcmd, hamcmd, delete))
+    scanthread.start()
+    inotifythread.start()
 
 
 if __name__ == '__main__':
