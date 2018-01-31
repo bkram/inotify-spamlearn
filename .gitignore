@@ -327,7 +327,6 @@ ASALocalRun/
 
 ### Python template
 # Byte-compiled / optimized / DLL files
-__pycache__/
 *.py[cod]
 *$py.class
 
@@ -379,7 +378,6 @@ coverage.xml
 *.pot
 
 # Django stuff:
-*.log
 .static_storage/
 .media/
 local_settings.py

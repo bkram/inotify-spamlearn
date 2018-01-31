@@ -19,11 +19,12 @@ def getconfig():
         ham_dir = config.get('paths', 'ham_dir')
         spamcmd = config.get('spam', 'spamcmd')
         hamcmd = config.get('spam', 'spamcmd')
-        delete = config.getboolean('spam', 'delete')
-        startup = config.getboolean('spam', 'startup')
-        loglevel = config.get('logs', 'loglevel')
-        logfile = config.get('logs', 'logfile')
-        return spam_dir, ham_dir, spamcmd, hamcmd, logfile, loglevel, delete, startup
+        delete = config.getboolean('mode', 'delete')
+        scan = config.getboolean('mode', 'scan')
+        oneshot = config.getboolean('mode', 'oneshot')
+        loglevel = config.get('logging', 'loglevel')
+        logfile = config.get('logging', 'logfile')
+        return spam_dir, ham_dir, spamcmd, hamcmd, logfile, loglevel, delete, scan, oneshot
     except Exception as e:
         exit('Configuration {}\n please check inotify-spamlearn.cfg'.format(e))
 
@@ -46,20 +47,19 @@ def process(filename, spamcmd, delete, initiator):
         logging.warning('File %s does not exist (anymore)' % filename)
 
 
-def scandirs(spam_dir, ham_dir, spamcmd, hamcmd, delete, startup):
+def scandirs(spam_dir, ham_dir, spamcmd, hamcmd, delete):
     initiator = 'Dirscan'
-    if startup:
-        for checkdir in [spam_dir, ham_dir]:
-            logging.info('Looking for existing files in {}'.format(checkdir))
-            for spam in os.listdir(checkdir):
-                try:
-                    if checkdir == spam_dir:
-                        process('/'.join([checkdir, spam]), spamcmd, delete, initiator)
-                    elif checkdir == ham_dir:
-                        process('/'.join([checkdir, spam]), hamcmd, delete, initiator)
-                except Exception as e:
-                    logging.error('Cannot open path {} {}'.format(checkdir, e))
-            logging.info('Finished looking for existing files in {}'.format(checkdir))
+    for checkdir in [spam_dir, ham_dir]:
+        logging.info('Looking for existing files in {}'.format(checkdir))
+        for spam in os.listdir(checkdir):
+            try:
+                if checkdir == spam_dir:
+                    process('/'.join([checkdir, spam]), spamcmd, delete, initiator)
+                elif checkdir == ham_dir:
+                    process('/'.join([checkdir, spam]), hamcmd, delete, initiator)
+            except Exception as e:
+                logging.error('Cannot open path {} {}'.format(checkdir, e))
+        logging.info('Finished looking for existing files in {}'.format(checkdir))
 
 
 def inotified(spam_dir, ham_dir, spamcmd, hamcmd, delete):
@@ -88,18 +88,18 @@ def inotified(spam_dir, ham_dir, spamcmd, hamcmd, delete):
 
 
 def main():
-    (spam_dir, ham_dir, spamcmd, hamcmd, logfile, loglevel, delete, startup) = getconfig()
-
+    (spam_dir, ham_dir, spamcmd, hamcmd, logfile, loglevel, delete, scan, oneshot) = getconfig()
     loglevel = getattr(logging, loglevel.upper(), 'INFO')
     logging.basicConfig(format='%(levelname)s %(message)s', filename=logfile, level=loglevel)
-
     logging.info('Starting inotify-spamlearn.py')
     scanthread = threading.Thread(name='Scan Directories', target=scandirs,
-                                  args=(spam_dir, ham_dir, spamcmd, hamcmd, delete, startup))
+                                  args=(spam_dir, ham_dir, spamcmd, hamcmd, delete))
     inotifythread = threading.Thread(name='Inotify Handling', target=inotified,
                                      args=(spam_dir, ham_dir, spamcmd, hamcmd, delete))
-    scanthread.start()
-    inotifythread.start()
+    if scan:
+        scanthread.start()
+    if not oneshot:
+        inotifythread.start()
 
 
 if __name__ == '__main__':
