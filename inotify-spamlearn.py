@@ -18,7 +18,7 @@ def getconfig():
         spam_dir = config.get('paths', 'spam_dir')
         ham_dir = config.get('paths', 'ham_dir')
         spamcmd = config.get('spam', 'spamcmd')
-        hamcmd = config.get('spam', 'spamcmd')
+        hamcmd = config.get('spam', 'hamcmd')
         delete = config.getboolean('mode', 'delete')
         scan = config.getboolean('mode', 'scan')
         oneshot = config.getboolean('mode', 'oneshot')
